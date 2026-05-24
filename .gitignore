@@ -18,6 +18,9 @@ src-tauri/gen/
 .DS_Store
 Thumbs.db
 
+# macOS reference checkout (separate repo)
+ClaudeView/
+
 # Env
 .env
 .env.*
