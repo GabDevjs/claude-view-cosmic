@@ -27,6 +27,32 @@ h1 {
   text-align: center;
 }
 
+.muted {
+  color: #888;
+  font-size: 0.85em;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 16px auto 0;
+  max-width: 240px;
+  text-align: left;
+}
+.stats dt {
+  color: #888;
+}
+.stats dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.error {
+  color: #d33;
+  font-size: 0.85em;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;
