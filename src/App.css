@@ -53,6 +53,43 @@ h1 {
   font-size: 0.85em;
 }
 
+.sessions-section {
+  margin-top: 20px;
+  text-align: left;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.sessions-section h2 {
+  font-size: 0.95em;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 8px;
+}
+.sessions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sessions li {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 0.9em;
+  font-variant-numeric: tabular-nums;
+}
+.sessions .pid {
+  color: #888;
+  min-width: 48px;
+  text-align: right;
+}
+.sessions .cwd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;

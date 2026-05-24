@@ -1,4 +1,6 @@
+import { SessionsList } from "./components/SessionsList";
 import { useCache } from "./hooks/useCache";
+import { useSessions } from "./hooks/useSessions";
 import "./App.css";
 
 function formatLimit(used?: number, total?: number): string {
@@ -7,7 +9,8 @@ function formatLimit(used?: number, total?: number): string {
 }
 
 function App() {
-  const { subscription, lastUpdate, error } = useCache();
+  const { subscription, lastUpdate, error: cacheError } = useCache();
+  const { sessions, error: sessionsError } = useSessions();
 
   return (
     <main className="container">
@@ -26,7 +29,13 @@ function App() {
         <dd>{formatLimit(subscription?.sevenDayLimit?.used, subscription?.sevenDayLimit?.total)}</dd>
       </dl>
 
-      {error && <p className="error">error: {error}</p>}
+      <section className="sessions-section">
+        <h2>Sessions</h2>
+        <SessionsList sessions={sessions} />
+      </section>
+
+      {cacheError && <p className="error">cache: {cacheError}</p>}
+      {sessionsError && <p className="error">sessions: {sessionsError}</p>}
     </main>
   );
 }

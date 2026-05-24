@@ -25,3 +25,10 @@ export interface CacheData {
   subscription?: SubscriptionData;
   session?: SessionData;
 }
+
+export interface Session {
+  pid: number;
+  cwd: string | null;
+  contextUsed: number | null;
+  contextTotal: number | null;
+}
