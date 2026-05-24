@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "claudeview-tmp",
+  "productName": "ClaudeView",
   "version": "0.1.0",
   "identifier": "dev.gabdevjs.claudeview",
   "build": {
@@ -12,9 +12,10 @@
   "app": {
     "windows": [
       {
-        "title": "claudeview-tmp",
-        "width": 800,
-        "height": 600
+        "title": "ClaudeView",
+        "width": 380,
+        "height": 520,
+        "resizable": true
       }
     ],
     "security": {
