@@ -5,10 +5,16 @@ mod watcher;
 
 use cache::{read_cache, SubscriptionData};
 use sessions::Session;
+use transcripts::TokenStats;
 
 #[tauri::command]
 fn get_active_sessions() -> Vec<Session> {
     sessions::scan()
+}
+
+#[tauri::command]
+fn get_token_stats(days: u32) -> Result<TokenStats, String> {
+    transcripts::aggregate(days).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -41,7 +47,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             get_subscription_data,
-            get_active_sessions
+            get_active_sessions,
+            get_token_stats
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -239,7 +239,7 @@ mod tests {
         let mut totals = BTreeMap::new();
         aggregate_file(&jsonl, Utc::now() - Duration::days(7), &mut totals).unwrap();
 
-        assert!(totals.get("old").is_none());
+        assert!(!totals.contains_key("old"));
         assert_eq!(totals.get("fresh-model").unwrap().tokens, 10);
 
         std::fs::remove_dir_all(&tmp).ok();
