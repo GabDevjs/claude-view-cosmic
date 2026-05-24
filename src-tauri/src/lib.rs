@@ -3,6 +3,12 @@ mod sessions;
 mod watcher;
 
 use cache::{read_cache, SubscriptionData};
+use sessions::Session;
+
+#[tauri::command]
+fn get_active_sessions() -> Vec<Session> {
+    sessions::scan()
+}
 
 #[tauri::command]
 fn get_subscription_data() -> Result<Option<SubscriptionData>, String> {
@@ -32,7 +38,10 @@ pub fn run() {
             }
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![get_subscription_data])
+        .invoke_handler(tauri::generate_handler![
+            get_subscription_data,
+            get_active_sessions
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
