@@ -1,4 +1,4 @@
-.PHONY: dev build run install uninstall
+.PHONY: dev build run install uninstall hook
 
 dev:
 	pnpm tauri dev
@@ -9,7 +9,10 @@ build:
 run: build
 	./src-tauri/target/release/claudeview
 
-install: build
+hook:
+	bash scripts/install_hook.sh
+
+install: build hook
 	sudo dpkg -i src-tauri/target/release/bundle/deb/ClaudeView_*.deb
 
 uninstall:
