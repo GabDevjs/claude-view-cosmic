@@ -32,3 +32,19 @@ export interface Session {
   contextUsed: number | null;
   contextTotal: number | null;
 }
+
+export interface ModelStats {
+  model: string;
+  messages: number;
+  toolCalls: number;
+  tokens: number;
+}
+
+export interface TokenStats {
+  byModel: ModelStats[];
+  totalMessages: number;
+  totalToolCalls: number;
+  totalTokens: number;
+  since: number;
+  days: number;
+}

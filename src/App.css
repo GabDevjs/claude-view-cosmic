@@ -90,6 +90,15 @@ h1 {
   white-space: nowrap;
 }
 
+.stats-chart {
+  width: 100%;
+}
+.stats-totals {
+  margin-top: 4px;
+  text-align: right;
+  font-size: 0.8em;
+}
+
 @media (prefers-color-scheme: dark) {
   :root {
     color: #f6f6f6;

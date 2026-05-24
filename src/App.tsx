@@ -1,7 +1,11 @@
 import { SessionsList } from "./components/SessionsList";
+import { TokenStatsChart } from "./components/TokenStatsChart";
 import { useCache } from "./hooks/useCache";
 import { useSessions } from "./hooks/useSessions";
+import { useStats } from "./hooks/useStats";
 import "./App.css";
+
+const HISTORY_DAYS = 7;
 
 function formatLimit(used?: number, total?: number): string {
   if (used === undefined || total === undefined) return "—";
@@ -11,6 +15,7 @@ function formatLimit(used?: number, total?: number): string {
 function App() {
   const { subscription, lastUpdate, error: cacheError } = useCache();
   const { sessions, error: sessionsError } = useSessions();
+  const { stats, error: statsError } = useStats(HISTORY_DAYS);
 
   return (
     <main className="container">
@@ -34,8 +39,14 @@ function App() {
         <SessionsList sessions={sessions} />
       </section>
 
+      <section className="sessions-section">
+        <h2>Tokens · last {HISTORY_DAYS}d</h2>
+        <TokenStatsChart stats={stats} />
+      </section>
+
       {cacheError && <p className="error">cache: {cacheError}</p>}
       {sessionsError && <p className="error">sessions: {sessionsError}</p>}
+      {statsError && <p className="error">stats: {statsError}</p>}
     </main>
   );
 }
