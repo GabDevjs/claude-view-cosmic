@@ -1,5 +1,6 @@
 mod cache;
 mod sessions;
+mod transcripts;
 mod watcher;
 
 use cache::{read_cache, SubscriptionData};
