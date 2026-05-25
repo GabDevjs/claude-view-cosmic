@@ -48,3 +48,26 @@ export interface TokenStats {
   since: number;
   days: number;
 }
+
+export interface DisplayPrefs {
+  show_percentage: boolean;
+  alert_threshold: number;
+  history_window_days: number;
+  refresh_interval_seconds: number;
+}
+
+export interface BehaviorPrefs {
+  autostart: boolean;
+  notifications_enabled: boolean;
+  notification_thresholds: number[];
+}
+
+export interface AppearancePrefs {
+  theme: string;
+}
+
+export interface Preferences {
+  display: DisplayPrefs;
+  behavior: BehaviorPrefs;
+  appearance: AppearancePrefs;
+}
