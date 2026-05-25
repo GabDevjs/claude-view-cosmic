@@ -1,4 +1,5 @@
 mod cache;
+mod config;
 mod sessions;
 mod transcripts;
 mod tray;
