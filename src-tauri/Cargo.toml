@@ -19,6 +19,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri-plugin-autostart = "2"
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -27,4 +28,5 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "serd
 dirs = "5"
 notify = "6"
 sysinfo = "0.30"
+toml = "0.8"
 
