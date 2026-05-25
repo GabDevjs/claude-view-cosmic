@@ -1,5 +1,6 @@
 mod cache;
 mod config;
+mod notifier;
 mod sessions;
 mod transcripts;
 mod tray;
@@ -74,6 +75,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             if let Err(e) = watcher::start(app.handle().clone()) {
                 eprintln!("[setup] watcher failed to start: {e}");
@@ -81,6 +83,7 @@ pub fn run() {
             if let Err(e) = tray::setup(app.handle()) {
                 eprintln!("[setup] tray failed to start: {e}");
             }
+            notifier::setup(app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
