@@ -25,10 +25,10 @@ function formatTokens(n: number): string {
 
 export function TokenStatsChart({ stats }: { stats: TokenStats | null }) {
   if (!stats) {
-    return <p className="muted">loading stats…</p>;
+    return <div className="empty">loading stats…</div>;
   }
   if (stats.byModel.length === 0) {
-    return <p className="muted">no usage in last {stats.days} day(s)</p>;
+    return <div className="empty">no usage in last {stats.days} day(s)</div>;
   }
 
   const data = stats.byModel.map((m) => ({

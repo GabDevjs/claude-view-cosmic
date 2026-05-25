@@ -12,9 +12,6 @@ function shortenCwd(cwd: string | null): string {
 }
 
 export function SessionsList({ sessions }: { sessions: Session[] }) {
-  if (sessions.length === 0) {
-    return <p className="muted">no active claude sessions</p>;
-  }
   return (
     <ul className="sessions">
       {sessions.map((s) => (
