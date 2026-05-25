@@ -44,6 +44,9 @@ pub fn run() {
             if let Err(e) = watcher::start(app.handle().clone()) {
                 eprintln!("[setup] watcher failed to start: {e}");
             }
+            if let Err(e) = tray::setup(app.handle()) {
+                eprintln!("[setup] tray failed to start: {e}");
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
