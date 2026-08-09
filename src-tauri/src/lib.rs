@@ -1,43 +1,23 @@
-mod cache;
+mod collector;
 mod config;
 mod notifier;
-mod sessions;
-mod transcripts;
+mod poller;
 mod tray;
 mod watcher;
 
-use cache::{read_cache, SubscriptionData};
 use config::Preferences;
-use sessions::Session;
+use poller::SourceStatus;
 use tauri_plugin_autostart::ManagerExt;
-use transcripts::TokenStats;
 
 #[tauri::command]
-fn get_active_sessions() -> Vec<Session> {
-    sessions::scan()
+fn get_sources_status() -> Vec<SourceStatus> {
+    poller::get_status()
 }
 
+/// Force an immediate poll of every source (local + remotes).
 #[tauri::command]
-fn get_token_stats(days: u32) -> Result<TokenStats, String> {
-    transcripts::aggregate(days).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn get_subscription_data() -> Result<Option<SubscriptionData>, String> {
-    match read_cache() {
-        Ok(data) => Ok(data.subscription),
-        Err(e) => {
-            // Missing cache file is the normal "not yet populated" state —
-            // surface it as Ok(None) so the UI can render an empty view
-            // instead of an error.
-            if let Some(io) = e.downcast_ref::<std::io::Error>() {
-                if io.kind() == std::io::ErrorKind::NotFound {
-                    return Ok(None);
-                }
-            }
-            Err(e.to_string())
-        }
-    }
+fn refresh_now() {
+    poller::nudge();
 }
 
 #[tauri::command]
@@ -47,7 +27,10 @@ fn get_preferences() -> Result<Preferences, String> {
 
 #[tauri::command]
 fn set_preferences(prefs: Preferences) -> Result<(), String> {
-    config::save(&prefs).map_err(|e| e.to_string())
+    config::save(&prefs).map_err(|e| e.to_string())?;
+    // Pick up new hosts / interval / window on the next tick, immediately.
+    poller::nudge();
+    Ok(())
 }
 
 /// Enable/disable XDG autostart AND persist the flag, so the next launch
@@ -76,20 +59,31 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_notification::init())
+        // A tray app must survive its window closing: hide instead of quitting,
+        // so the panel item stays and the window reopens on the next tray click.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .setup(|app| {
-            if let Err(e) = watcher::start(app.handle().clone()) {
+            // Watcher nudges the poller on local cache changes for <1s updates.
+            if let Err(e) = watcher::start() {
                 eprintln!("[setup] watcher failed to start: {e}");
             }
+            // Tray registers its SNI item; set up before the poller so its nudge
+            // channel exists when the first poll cycle calls set_percent.
             if let Err(e) = tray::setup(app.handle()) {
                 eprintln!("[setup] tray failed to start: {e}");
             }
-            notifier::setup(app.handle());
+            // Poller owns the refresh loop: fetch sources, update UI + tray.
+            poller::start(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            get_subscription_data,
-            get_active_sessions,
-            get_token_stats,
+            get_sources_status,
+            refresh_now,
             get_preferences,
             set_preferences,
             toggle_autostart,

@@ -1,29 +1,31 @@
+//! Watches `~/.claude/claudeview_cache.json` so a local Claude Code interaction
+//! refreshes the UI in <1s instead of waiting for the next poll tick. On any
+//! change it just nudges the poller, which re-fetches every source.
+
 use anyhow::{Context, Result};
 use notify::{EventKind, RecommendedWatcher, RecursiveMode, Watcher};
+use std::path::PathBuf;
 use std::sync::mpsc::channel;
 use std::thread;
-use tauri::{AppHandle, Emitter};
 
-use crate::cache::cache_path;
+use crate::poller;
 
-pub const EVENT: &str = "cache-updated";
+fn cache_path() -> Result<PathBuf> {
+    let home = dirs::home_dir().context("$HOME is not set")?;
+    Ok(home.join(".claude").join("claudeview_cache.json"))
+}
 
-/// Start watching ~/.claude/claudeview_cache.json. Emits `cache-updated`
-/// (no payload) on every modify/create so the frontend can re-fetch via
-/// `get_subscription_data`.
-///
-/// Watches the *parent directory* rather than the file itself so creation
-/// events still fire when the cache does not exist yet (first run).
-pub fn start(app: AppHandle) -> Result<()> {
+/// Start watching the local quota cache. Watches the *parent directory* rather
+/// than the file itself so a first-run create still fires.
+pub fn start() -> Result<()> {
     let target = cache_path()?;
     let watch_dir = target
         .parent()
         .context("cache path has no parent")?
         .to_path_buf();
 
-    // ~/.claude almost always exists after the user has run Claude Code,
-    // but create it defensively so the watcher init never fails on a
-    // fresh machine.
+    // ~/.claude usually exists once the user has run Claude Code, but create it
+    // defensively so watcher init never fails on a fresh machine.
     std::fs::create_dir_all(&watch_dir).ok();
 
     thread::spawn(move || {
@@ -40,10 +42,6 @@ pub fn start(app: AppHandle) -> Result<()> {
             return;
         }
 
-        // Fire once at startup so the UI populates even if no file event
-        // occurs after launch.
-        let _ = app.emit(EVENT, ());
-
         for res in rx {
             match res {
                 Ok(event) => {
@@ -53,7 +51,7 @@ pub fn start(app: AppHandle) -> Result<()> {
                         EventKind::Modify(_) | EventKind::Create(_) | EventKind::Remove(_)
                     );
                     if touches_target && relevant {
-                        let _ = app.emit(EVENT, ());
+                        poller::nudge();
                     }
                 }
                 Err(e) => eprintln!("[watcher] event err: {e}"),

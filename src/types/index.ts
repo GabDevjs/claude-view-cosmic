@@ -1,53 +1,69 @@
-// Mirrors src-tauri/src/cache.rs. All fields are optional because the
-// statusline hook only writes the PostToolUse payload — the richer schema
-// (PRA §4.2) gets filled in by future phases.
+// Mirrors the JSON emitted by scripts/collect_status.py (decoded in Rust by
+// src-tauri/src/collector.rs). One SourceSnapshot per monitored machine.
 
-export interface LimitData {
-  used?: number;
-  total?: number;
-  resetAt?: number;
+export interface SourceConfig {
+  label: string;
+  /** null for the local machine; a ~/.ssh/config alias for a remote. */
+  sshHost: string | null;
 }
 
-export interface SubscriptionData {
-  fiveHourLimit?: LimitData;
-  sevenDayLimit?: LimitData;
+export interface Quota {
+  model?: string | null;
+  modelDisplay?: string | null;
+  fiveHourPct?: number | null;
+  fiveHourResetsAt?: number | null;
+  sevenDayPct?: number | null;
+  sevenDayResetsAt?: number | null;
+  contextWindowPct?: number | null;
+  updatedAt?: number | null;
 }
 
-export interface SessionData {
-  model?: string;
-  contextUsed?: number;
-  contextTotal?: number;
-  messagesCount?: number;
-}
-
-export interface CacheData {
-  updatedAt?: number;
-  subscription?: SubscriptionData;
-  session?: SessionData;
-}
-
-export interface Session {
+export interface ActiveSession {
   pid: number;
-  cwd: string | null;
-  contextUsed: number | null;
-  contextTotal: number | null;
+  cwd?: string | null;
+  project?: string | null;
+  runningFor?: string | null;
+  sessionId?: string | null;
+  lastModified?: number | null;
+  contextWindowPct?: number | null;
 }
 
 export interface ModelStats {
-  model: string;
   messages: number;
   toolCalls: number;
-  tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheCreationTokens: number;
 }
 
 export interface TokenStats {
-  byModel: ModelStats[];
+  windowDays: number;
   totalMessages: number;
   totalToolCalls: number;
-  totalTokens: number;
-  since: number;
-  days: number;
+  byModel: Record<string, ModelStats>;
 }
+
+export interface SourceSnapshot {
+  hostname: string;
+  generatedAt: number;
+  quota?: Quota | null;
+  activeSessions: ActiveSession[];
+  tokenStats: TokenStats;
+}
+
+/** Discriminated union mirroring the Rust `SourceState` enum. */
+export type SourceState =
+  | { status: "loading" }
+  | { status: "ok"; data: SourceSnapshot }
+  | { status: "error"; data: string };
+
+export interface SourceStatus {
+  config: SourceConfig;
+  state: SourceState;
+}
+
+// Preferences — mirrors src-tauri/src/config.rs (snake_case fields).
 
 export interface DisplayPrefs {
   show_percentage: boolean;
@@ -67,6 +83,7 @@ export interface AppearancePrefs {
 }
 
 export interface Preferences {
+  remote_hosts: string[];
   display: DisplayPrefs;
   behavior: BehaviorPrefs;
   appearance: AppearancePrefs;

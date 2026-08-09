@@ -2,6 +2,8 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use crate::collector::SourceConfig;
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default, rename_all = "snake_case")]
 pub struct DisplayPrefs {
@@ -62,9 +64,30 @@ impl Default for AppearancePrefs {
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(default)]
 pub struct Preferences {
+    /// `~/.ssh/config` aliases of remote machines to poll alongside the local
+    /// one (e.g. `["pop"]`). Each must be reachable via passwordless `ssh <alias>`.
+    ///
+    /// Declared first so TOML serializes it as a top-level array *before* the
+    /// section tables — `toml` rejects a bare value that follows a `[table]`.
+    pub remote_hosts: Vec<String>,
     pub display: DisplayPrefs,
     pub behavior: BehaviorPrefs,
     pub appearance: AppearancePrefs,
+}
+
+impl Preferences {
+    /// The full source list the poller iterates: local first, then each
+    /// non-empty remote alias.
+    pub fn sources(&self) -> Vec<SourceConfig> {
+        let mut sources = vec![SourceConfig::local()];
+        for host in &self.remote_hosts {
+            let host = host.trim();
+            if !host.is_empty() {
+                sources.push(SourceConfig::remote(host));
+            }
+        }
+        sources
+    }
 }
 
 pub fn config_path() -> Result<PathBuf> {

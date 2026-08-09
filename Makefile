@@ -1,4 +1,5 @@
-.PHONY: dev build run hook deb rpm appimage install uninstall restart
+.PHONY: dev build run hook deb rpm appimage install uninstall restart \
+        applet applet-install applet-install-system applet-uninstall
 
 # ── Dev ───────────────────────────────────────────────────────────────────────
 
@@ -48,3 +49,21 @@ restart:
 	pkill -x $(BINARY) || true
 	$(BINARY) &
 	@echo "✓ restarted"
+
+# ── COSMIC panel applet (text usage on the panel) ─────────────────────────────
+
+# Build the native COSMIC applet (release).
+applet:
+	cd applet && cargo build --release
+
+# Per-user install (no root): binary in ~/.local/bin, .desktop in
+# ~/.local/share/applications, and registers it in the panel.
+applet-install: applet
+	bash applet/install.sh
+
+# System install (most robust for surviving reboots): /usr/bin + /usr/share.
+applet-install-system: applet
+	sudo bash applet/install.sh
+
+applet-uninstall:
+	bash applet/install.sh --uninstall

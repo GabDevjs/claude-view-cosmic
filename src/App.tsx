@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { PreferencesPanel } from "./components/Preferences";
-import { SessionsList } from "./components/SessionsList";
-import { SubscriptionBars } from "./components/SubscriptionBars";
-import { TokenStatsChart } from "./components/TokenStatsChart";
-import { useCache } from "./hooks/useCache";
+import { SourceSection } from "./components/SourceSection";
 import { usePreferences } from "./hooks/usePreferences";
-import { useSessions } from "./hooks/useSessions";
-import { useStats } from "./hooks/useStats";
+import { useSources } from "./hooks/useSources";
 import "./App.css";
 
 function App() {
-  const { subscription, lastUpdate, error: cacheError } = useCache();
-  const { sessions, error: sessionsError } = useSessions();
+  const { sources, error: sourcesError } = useSources();
   const { prefs, error: prefsError, save, setAutostart } = usePreferences();
-
-  const historyDays = prefs?.display.history_window_days ?? 7;
-  const { stats, error: statsError } = useStats(historyDays);
 
   const [showPrefs, setShowPrefs] = useState(false);
 
-  // Apply theme pref to <html>. "auto" removes the attribute so CSS falls
-  // back to prefers-color-scheme; "light"/"dark" force the corresponding
-  // variables defined in App.css.
+  // Apply theme pref to <html>. "auto" removes the attribute so CSS falls back
+  // to prefers-color-scheme; "light"/"dark" force the variables in App.css.
   useEffect(() => {
     const theme = prefs?.appearance.theme;
     const root = document.documentElement;
@@ -32,10 +24,7 @@ function App() {
     }
   }, [prefs?.appearance.theme]);
 
-  const hasAnySubscription =
-    subscription &&
-    (subscription.fiveHourLimit !== undefined ||
-      subscription.sevenDayLimit !== undefined);
+  const interval = prefs?.display.refresh_interval_seconds ?? 60;
 
   return (
     <main className="container">
@@ -51,37 +40,22 @@ function App() {
         </button>
       </header>
 
-      <p className="muted">
-        {lastUpdate
-          ? `last refetch: ${new Date(lastUpdate).toLocaleTimeString()}`
-          : "waiting for cache…"}
-      </p>
-
-      {hasAnySubscription ? (
-        <SubscriptionBars subscription={subscription} />
-      ) : (
-        <div className="empty">
-          subscription data will appear once Claude Code writes the cache
-        </div>
-      )}
-
-      <section className="sessions-section">
-        <h2>Sessions</h2>
-        {sessions.length === 0 ? (
-          <div className="empty">no active claude sessions</div>
+      <div className="sources">
+        {sources.length === 0 ? (
+          <div className="empty">starting…</div>
         ) : (
-          <SessionsList sessions={sessions} />
+          sources.map((s) => <SourceSection key={s.config.sshHost ?? "__local__"} status={s} />)
         )}
-      </section>
+      </div>
 
-      <section className="sessions-section">
-        <h2>Tokens · last {historyDays}d</h2>
-        <TokenStatsChart stats={stats} />
-      </section>
+      <footer className="app-footer">
+        <span className="muted">refresh every {interval}s</span>
+        <button className="link-btn" onClick={() => invoke("refresh_now").catch(() => {})}>
+          refresh now
+        </button>
+      </footer>
 
-      {cacheError && <p className="error">cache: {cacheError}</p>}
-      {sessionsError && <p className="error">sessions: {sessionsError}</p>}
-      {statsError && <p className="error">stats: {statsError}</p>}
+      {sourcesError && <p className="error">sources: {sourcesError}</p>}
 
       {showPrefs && prefs && (
         <PreferencesPanel

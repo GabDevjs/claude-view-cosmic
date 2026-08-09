@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
-# Install the ClaudeView statusline hook into ~/.claude/.
+# Install the ClaudeView statusLine command into ~/.claude/.
+#
+# The 5h / 7d subscription rate limits are ONLY exposed to a `statusLine`
+# command (via its stdin JSON `rate_limits` block) — no hook event carries
+# them. So we register claudeview_statusline.py as the statusLine command, not
+# as a PostToolUse hook.
 #
 # - Copies scripts/claudeview_statusline.py to ~/.claude/hooks/
-# - Registers it as a PostToolUse hook in ~/.claude/settings.json
-# - Backs up settings.json to settings.json.bak before any change (PRA §10.9)
-# - Merges defensively: preserves all existing settings and other hooks
+# - Registers it as `statusLine` in ~/.claude/settings.json
+# - Removes the legacy PostToolUse entry that pointed at this script (older
+#   versions wired it there, where it only ever wrote the raw tool event)
+# - Backs up settings.json to settings.json.bak before any change
+# - Merges defensively: preserves all other settings and hooks
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -16,12 +23,12 @@ SETTINGS="$CLAUDE_DIR/settings.json"
 SETTINGS_BAK="$CLAUDE_DIR/settings.json.bak"
 
 if [[ ! -f "$HOOK_SRC" ]]; then
-  echo "ERROR: hook source not found at $HOOK_SRC" >&2
+  echo "ERROR: statusLine source not found at $HOOK_SRC" >&2
   exit 1
 fi
 
 if ! command -v python3 >/dev/null 2>&1; then
-  echo "ERROR: python3 is required (PRA §7.2)" >&2
+  echo "ERROR: python3 is required" >&2
   exit 1
 fi
 
@@ -29,9 +36,8 @@ mkdir -p "$HOOKS_DIR"
 install -m 0755 "$HOOK_SRC" "$HOOK_DST"
 echo "✓ installed $HOOK_DST"
 
-# Backup settings.json before any modification. Always overwrite the .bak
-# so a stale backup never wins — the previous run's settings are the most
-# recent known-good state.
+# Backup settings.json before any modification. Always overwrite the .bak so a
+# stale backup never wins — the previous run's settings are the known-good state.
 if [[ -f "$SETTINGS" ]]; then
   cp "$SETTINGS" "$SETTINGS_BAK"
   echo "✓ backed up $SETTINGS -> $SETTINGS_BAK"
@@ -40,39 +46,48 @@ else
   echo "✓ created empty $SETTINGS"
 fi
 
-# Merge in the PostToolUse entry without clobbering anything else. The
-# merge is idempotent: re-running install_hook.sh does not duplicate the
-# entry.
+# Register the statusLine command and drop the legacy PostToolUse entry. The
+# merge is idempotent and preserves every other setting / hook.
 python3 - "$SETTINGS" "$HOOK_DST" <<'PY'
 import json, sys, pathlib
 
 settings_path = pathlib.Path(sys.argv[1])
-hook_cmd = f"python3 {sys.argv[2]}"
+script = sys.argv[2]
+hook_cmd = f"python3 {script}"
 
 settings = json.loads(settings_path.read_text() or "{}")
-hooks = settings.setdefault("hooks", {})
-post_tool_use = hooks.setdefault("PostToolUse", [])
 
-target_entry = None
-for entry in post_tool_use:
-    if entry.get("matcher", "") == "":
-        target_entry = entry
-        break
-if target_entry is None:
-    target_entry = {"matcher": "", "hooks": []}
-    post_tool_use.append(target_entry)
+# 1) statusLine -> our command. Warn (but proceed; the .bak preserves it) if a
+#    different statusLine was configured, since the feature depends on ours.
+existing = settings.get("statusLine")
+if isinstance(existing, dict) and existing.get("command") not in (None, hook_cmd):
+    print(f"! replacing existing statusLine: {existing.get('command')!r} "
+          f"(restore from {settings_path.name}.bak if unwanted)")
+settings["statusLine"] = {"type": "command", "command": hook_cmd, "padding": 0}
 
-inner = target_entry.setdefault("hooks", [])
-already_installed = any(
-    h.get("type") == "command" and h.get("command") == hook_cmd
-    for h in inner
-)
-if not already_installed:
-    inner.append({"type": "command", "command": hook_cmd})
+# 2) Remove the legacy PostToolUse entry that referenced this same script.
+hooks = settings.get("hooks")
+if isinstance(hooks, dict) and isinstance(hooks.get("PostToolUse"), list):
+    for entry in hooks["PostToolUse"]:
+        inner = entry.get("hooks")
+        if isinstance(inner, list):
+            entry["hooks"] = [
+                h for h in inner
+                if not (h.get("type") == "command"
+                        and "claudeview_statusline.py" in (h.get("command") or ""))
+            ]
+    # Drop now-empty matcher groups, and an empty PostToolUse key.
+    hooks["PostToolUse"] = [e for e in hooks["PostToolUse"] if e.get("hooks")]
+    if not hooks["PostToolUse"]:
+        del hooks["PostToolUse"]
+    if not hooks:
+        del settings["hooks"]
 
 settings_path.write_text(json.dumps(settings, indent=2) + "\n")
-print(f"✓ registered PostToolUse hook in {settings_path}")
+print(f"✓ registered statusLine in {settings_path} (legacy PostToolUse entry removed)")
 PY
 
 echo
-echo "Done. Run Claude Code once and confirm ~/.claude/claudeview_cache.json appears."
+echo "Done. The subscription bars / tray color populate only for Pro/Max plans,"
+echo "after the first model response in a session (that is when Claude Code"
+echo "starts sending rate_limits to the statusLine)."

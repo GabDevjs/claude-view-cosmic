@@ -7,6 +7,8 @@ dist-ssr/
 # Tauri / Rust
 src-tauri/target/
 src-tauri/gen/
+applet/target/
+target/
 
 # Editors
 .vscode/

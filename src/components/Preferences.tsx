@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Preferences } from "../types";
 
 interface Props {
@@ -15,11 +16,27 @@ export function PreferencesPanel({
   onClose,
   error,
 }: Props) {
-  const patch = <K extends keyof Preferences>(
+  const [newHost, setNewHost] = useState("");
+
+  const patch = <K extends "display" | "behavior" | "appearance">(
     section: K,
     update: Partial<Preferences[K]>,
   ) => {
     onChange({ ...prefs, [section]: { ...prefs[section], ...update } });
+  };
+
+  const addHost = () => {
+    const host = newHost.trim();
+    if (!host || prefs.remote_hosts.includes(host)) return;
+    onChange({ ...prefs, remote_hosts: [...prefs.remote_hosts, host] });
+    setNewHost("");
+  };
+
+  const removeHost = (host: string) => {
+    onChange({
+      ...prefs,
+      remote_hosts: prefs.remote_hosts.filter((h) => h !== host),
+    });
   };
 
   return (
@@ -120,6 +137,44 @@ export function PreferencesPanel({
               <option value="dark">dark</option>
             </select>
           </label>
+        </section>
+
+        <section>
+          <h3>Remote machines (SSH)</h3>
+          <p className="muted hosts-hint">
+            A <code>~/.ssh/config</code> alias for each machine where you run
+            Claude Code remotely (e.g. your VM/server). Must connect
+            passwordless: <code>ssh &lt;alias&gt;</code> with no prompt.
+          </p>
+          <ul className="hosts-list">
+            {prefs.remote_hosts.map((host) => (
+              <li key={host}>
+                <span>{host}</span>
+                <button
+                  className="host-remove"
+                  onClick={() => removeHost(host)}
+                  aria-label={`remove ${host}`}
+                  title="remove"
+                >
+                  −
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hosts-add">
+            <input
+              type="text"
+              placeholder="e.g. pop"
+              value={newHost}
+              onChange={(e) => setNewHost(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") addHost();
+              }}
+            />
+            <button onClick={addHost} disabled={!newHost.trim()}>
+              Add
+            </button>
+          </div>
         </section>
 
         {error && <p className="error">prefs: {error}</p>}
